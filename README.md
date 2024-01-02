@@ -1,4 +1,4 @@
-# ASD-Diagnostic_Research_2023-24
+# ASD_Diagnostic_Research_2023-24
 
 Autism Spectrum Disorder (ASD) is a neurodevelopmental disorder which affects around 1 in 36 children in America. 
 As of October 2023, despite the amount of groundbreaking research identifying autism’s neurobiological underpinnings, 
