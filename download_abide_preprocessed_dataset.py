@@ -1,5 +1,5 @@
 # Main collect and download function
-def collect_and_download(derivative, pipeline, strategy, out_dir, diagnosis):
+def collect_and_download(derivative, pipeline, strategy, out_dir, diagnosis, print_stats=True):
     import os
     import urllib.request as request
 
@@ -72,15 +72,15 @@ def collect_and_download(derivative, pipeline, strategy, out_dir, diagnosis):
             os.makedirs(download_dir)
         try:
             if not os.path.exists(download_file):
-                print('Retrieving: {0}'.format(download_file))
+                print('Retrieving: {0}'.format(download_file)) if print_stats else None
                 request.urlretrieve(s3_path, download_file)
-                print('{0:.3f}% percent complete'.format(100*(float(path_idx+1)/total_num_files)))
+                print('{0:.3f}% percent complete'.format(100*(float(path_idx+1)/total_num_files))) if print_stats else None
             else:
-                print('File {0} already exists, skipping...'.format(download_file))
+                print('File {0} already exists, skipping...'.format(download_file)) if print_stats else None
         except Exception as exc:
             print('There was a problem downloading {0}.\n Check input arguments and try again.'.format(s3_path))
 
-    print('Done!')
+    print('Done!') if print_stats else None
 
 # pipelines = ["ccs", "cpac", "dparsf", "niak"]
 # strategies = ["filt_global", "filt_noglobal", "nofilt_global", "nofilt_noglobal"]
