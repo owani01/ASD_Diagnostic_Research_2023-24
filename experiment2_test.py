@@ -1,6 +1,5 @@
 import pandas as pd
-import nbimporter
-import model
+import diagnostic_model
 
 derivatives = ["rois_aal", "rois_cc200", "rois_cc400", "rois_dosenbach160", "rois_ez", "rois_ho", "rois_tt"]
 algorithms = ["SVM", "RF", "DT", "KNN", "LR", "NB"]
@@ -17,9 +16,9 @@ for derivative in derivatives:
     for algorithm in algorithms:
         for pipeline in pipelines:
             for strategy in strategies:
-                # Run the model; download data if needed, collect features and labels, train and test algorithm, collect performance metrics
                 try:
-                    model_performance = model.test_diagnostic_model(derivative=derivative, strategy=strategy, pipeline=pipeline, algorithm=algorithm, print_stats=False)
+                    # Run the model; download data if needed, collect features and labels, train and test algorithm, collect performance metrics
+                    model_performance = diagnostic_model.test_diagnostic_model(derivative=derivative, strategy=strategy, pipeline=pipeline, algorithm=algorithm, print_stats=False)
                 except Exception as e:
                     print(f"Error in model execution: {e}")
 
