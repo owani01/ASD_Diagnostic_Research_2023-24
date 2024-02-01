@@ -188,8 +188,27 @@ def calculate_metrics(y_test, y_predictions):
     
     return accuracy, conf_matrix, sensitivity, specificity, precision, f1_score
 
-# Function for training/testing fMRI data with ML model
-def train_test_fMRI_data(fMRI_features, labels, algorithm, k, print_stats=True):
+# Function for training/testing fMRI data with ML model without k-fold cross variation
+def train_test_fMRI_data_basic(fMRI_features, labels, algorithm, test_size=0.2, print_stats=True):
+    X_train, X_test, y_train, y_test = train_test_split(fMRI_features, labels, test_size=test_size, random_state=42)
+
+    predictions = train_test_model(X_train, X_test, y_train, algorithm)
+    
+    accuracy, conf_matrix, sensitivity, specificity, precision, f1_score, = calculate_metrics(y_test, predictions)
+    tn, fp, fn, tp = conf_matrix.ravel()
+
+    if print_stats:
+        print("Average Accuracy: ", accuracy)
+        print("Overall Confusion Matrix: \n", conf_matrix)
+        print("Average Sensitivity: ", sensitivity)
+        print("Average Specificity: ", specificity)
+        print("Average Precision: ", precision)
+        print("Average F1 Score: ", f1_score)
+
+    return [accuracy, conf_matrix, sensitivity, specificity, precision, f1_score, tp, tn, fp, fn]
+
+# Function for training/testing fMRI data with ML model using k-fold cross variation
+def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=True):
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
 
     total_accuracy = 0
@@ -215,28 +234,30 @@ def train_test_fMRI_data(fMRI_features, labels, algorithm, k, print_stats=True):
         total_f1_score += f1_score
 
     average_accuracy = total_accuracy / k
-    overall_conf_matrix = total_conf_matrix / k
     average_sensitivity = total_sensitivity / k
     average_specificity = total_specificity / k
     average_precision = total_precision / k
     average_f1_score = total_f1_score / k
 
-    avg_tn, avg_fp, avg_fn, avg_tp = overall_conf_matrix.ravel()
+    total_tn, total_fp, total_fn, total_tp = total_conf_matrix.ravel()
 
     if print_stats:
         print("Average Accuracy: ", average_accuracy)
-        print("Overall Confusion Matrix: \n", overall_conf_matrix)
+        print("Overall Confusion Matrix: \n", total_conf_matrix)
         print("Average Sensitivity: ", average_sensitivity)
         print("Average Specificity: ", average_specificity)
         print("Average Precision: ", average_precision)
         print("Average F1 Score: ", average_f1_score)
 
-    return [average_accuracy, average_sensitivity, average_specificity, average_precision, average_f1_score, avg_tp, avg_tn, avg_fp, avg_fn]
+    return [average_accuracy, average_sensitivity, average_specificity, average_precision, average_f1_score, total_tp, total_tn, total_fp, total_fn]
 
 
-def test_diagnostic_model(derivative, strategy, pipeline, algorithm, k=5, print_stats=True):
+def test_diagnostic_model(derivative, strategy, pipeline, algorithm, kFold=True, k=5, test_size=0.2, print_stats=True):
     download_data(desired_derivative=derivative, desired_strategy=strategy, desired_pipeline=pipeline, print_stats=print_stats)
 
     features, labels = features_and_labels(derivative=derivative, pipeline=pipeline, strategy=strategy, print_stats=print_stats)
 
-    return train_test_fMRI_data(fMRI_features=features, labels=labels, algorithm=algorithm, k=k, print_stats=print_stats)
+    if kFold:
+        return train_test_fMRI_data_kfold(fMRI_features=features, labels=labels, algorithm=algorithm, k=k, print_stats=print_stats)
+    else:
+        return train_test_fMRI_data_basic(fMRI_features=features, labels=labels, algorithm=algorithm, test_size=test_size, print_stats=print_stats)
