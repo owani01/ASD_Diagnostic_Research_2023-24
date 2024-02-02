@@ -1,3 +1,4 @@
+
 # Import the script function that downloads preprocessed fMRI data
 from download_abide_preprocessed_dataset import collect_and_download
 
@@ -5,7 +6,7 @@ import os
 import numpy as np
 
 # Part of scikit-learn library; Support Vector Classification (SVC), a type of SVM used for classification tasks
-from sklearn.svm import SVC 
+from sklearn.svm import SVC
 
 # Part of scikit-learn library; Random Forest Classifier, a type of Random Forest used for classification tasks
 from sklearn.ensemble import RandomForestClassifier
@@ -23,13 +24,13 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 
 # XGBoost Classifier Algorithm; a type of gradient-boosted decision trees designed for better speed and performance, used for classification
-import xgboost as xgb 
+import xgboost as xgb
 
 # GridSearchCV functionality from scikit-learn; used to hypertune parameters for machine learning model
 from sklearn.model_selection import GridSearchCV
 
 # Function from scikit-learn; splits datasets into training and testing sets
-from sklearn.model_selection import train_test_split 
+from sklearn.model_selection import train_test_split
 
 # Function from scikit-learn; computes parameters relating to the model's performance
 from sklearn.metrics import accuracy_score, confusion_matrix, make_scorer
@@ -38,7 +39,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, make_scorer
 from sklearn.model_selection import KFold, cross_val_predict
 
 def download_data(desired_derivative, desired_strategy, desired_pipeline, print_stats=True):
-    # Variables to specify download settings (modify these values as needed)    
+    # Variables to specify download settings (modify these values as needed)
     download_asd_dir = 'abide_preprocessed_dataset/ASD'  # Path to local folder to download files to for ASD data
     download_tdc_dir = 'abide_preprocessed_dataset/TDC' # Path to local folder to download files to for controls
     desired_diagnosis_asd = 'asd'  # 'asd', 'tdc', or 'both' corresponding to the diagnosis of the participants for whom data should be downloaded
@@ -56,15 +57,15 @@ def gather_features(data_dir):
     for file_name in os.listdir(data_dir):
         subject_path = os.path.join(data_dir, file_name)
 
-        # Check if the file is a timeseries file 
+        # Check if the file is a timeseries file
         if file_name.endswith('.1D'):
-            # Load the timeseries data 
+            # Load the timeseries data
             timeseries_data = load_timeseries_data(subject_path)
 
             # Append features
             features.append(timeseries_data)
 
-    features_list = [np.array(feature) for feature in features]    
+    features_list = [np.array(feature) for feature in features]
     return features_list
 
 def load_timeseries_data(file_path):
@@ -95,12 +96,12 @@ def features_and_labels(pipeline, derivative, strategy, print_stats=True):
     features_tdc = gather_features(download_tdc_dir)
     labels_tdc = np.zeros(len(features_tdc)) # Label 1 for ASD, 0 for TDC
 
-    # Concatenate ASD and TDC features 
+    # Concatenate ASD and TDC features
     all_features = []
-    all_features.extend(features_asd) 
+    all_features.extend(features_asd)
     all_features.extend(features_tdc)
 
-    # Padding timeseries and # of features for features 
+    # Padding timeseries and # of features for features
     max_length = max(len(ts) for ts in all_features) # Find the maximum length among all timeseries
     all_features_padded = [pad_timeseries_to_length(ts, max_length) for ts in all_features] # Pad each time series to the maximum length
     all_features = np.array(all_features_padded) # Convert the list of padded arrays to a 2D NumPy array
@@ -144,7 +145,7 @@ def xgb_classifier_hypertuned(X_train, y_train):
         specificity = tn / (tn + fp)
         mean_sensitivity_specificity = (sensitivity + specificity) / 2
         return mean_sensitivity_specificity
-    
+
     custom_scorer = make_scorer(custom_sensitivity_specificity_scoring) # Create the custom scorer
     grid_search = GridSearchCV(estimator=xgb_model, param_grid=parameter_grid, cv=3, scoring=custom_scorer) # Use GridSearchCV for hyperparameter tuning
     grid_search.fit(X_train, y_train)
@@ -152,11 +153,14 @@ def xgb_classifier_hypertuned(X_train, y_train):
     best_params = grid_search.best_params_ # Get the best hyperparameters
 
     best_model = xgb.XGBClassifier(**best_params) # Train the model with the best hyperparameters
-    
+
     return best_model
 
 # Function for training/testing ML model (for all algorithms)
-def train_test_model(X_train, X_test, y_train, algorithm):
+def train_test_model(X_train, X_test, y_train, algorithm, print_stats=True):
+    if print_stats:
+      print("Entered function for model fitting.")
+    
     match_algorithm = {
         'SVM': SVC(),
         'RF': RandomForestClassifier(n_estimators=100, random_state=42),
@@ -166,13 +170,22 @@ def train_test_model(X_train, X_test, y_train, algorithm):
         'KNN': KNeighborsClassifier(n_neighbors=5),
         'XGB': xgb_classifier_hypertuned(X_train, y_train)
             # NOTE: Processing time is too high, causing program to crash; MUST tune hyperparameters
-    } # This maps a string input to its corresponding class in scikit-learn  
-
-    model = match_algorithm.get(algorithm) # Creating the actual model based on the algorithm parameter 
+    } # This maps a string input to its corresponding class in scikit-learn
+    
+    if print_stats:
+      print("Dictionary created.")
+    
+    model = match_algorithm.get(algorithm) # Creating the actual model based on the algorithm parameter
+    if print_stats:
+      print(f"The model has been trained to the {algorithm} algorithm!")
 
     model.fit(X_train, y_train) # Training the model
+    if print_stats:
+      print("Model training complete!")
 
     y_predictions = model.predict(X_test) # Testing the model; getting predictions from the X_test values
+    if print_stats:
+      print("Model testing complete!")
 
     return y_predictions
 
@@ -185,31 +198,40 @@ def calculate_metrics(y_test, y_predictions):
     specificity = tn / (tn + fp) # Compute specificity
     precision = tp / (tp + fp) # Compute precision
     f1_score = 2 * (precision * sensitivity) / (precision + sensitivity) # Compute F1 score
-    
+
     return accuracy, conf_matrix, sensitivity, specificity, precision, f1_score
 
 # Function for training/testing fMRI data with ML model without k-fold cross variation
 def train_test_fMRI_data_basic(fMRI_features, labels, algorithm, test_size=0.2, print_stats=True):
     X_train, X_test, y_train, y_test = train_test_split(fMRI_features, labels, test_size=test_size, random_state=42)
+    if print_stats:
+      print("Features and labels have been split into training and testing datasets!")
 
-    predictions = train_test_model(X_train, X_test, y_train, algorithm)
-    
+    predictions = train_test_model(X_train, X_test, y_train, algorithm, print_stats=print_stats)
+    if print_stats:
+      print("The model has been trained and tested!")
+
     accuracy, conf_matrix, sensitivity, specificity, precision, f1_score, = calculate_metrics(y_test, predictions)
     tn, fp, fn, tp = conf_matrix.ravel()
+    if print_stats:
+      print("Performance metrics for the model have been calculated!")
 
     if print_stats:
-        print("Average Accuracy: ", accuracy)
-        print("Overall Confusion Matrix: \n", conf_matrix)
-        print("Average Sensitivity: ", sensitivity)
-        print("Average Specificity: ", specificity)
-        print("Average Precision: ", precision)
-        print("Average F1 Score: ", f1_score)
+        print("Accuracy: ", accuracy)
+        print("Confusion Matrix: \n", conf_matrix)
+        print("Sensitivity: ", sensitivity)
+        print("Specificity: ", specificity)
+        print("Precision: ", precision)
+        print("F1 Score: ", f1_score)
 
     return [accuracy, conf_matrix, sensitivity, specificity, precision, f1_score, tp, tn, fp, fn]
 
 # Function for training/testing fMRI data with ML model using k-fold cross variation
 def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=True):
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
+    if print_stats:
+      print("Using kFold cross validation to random split data into sections is done!")
+
 
     total_accuracy = 0
     total_conf_matrix = np.zeros((2, 2))
@@ -219,12 +241,22 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
     total_f1_score = 0
 
     for train_index, test_index in kf.split(fMRI_features):
+        splitted_set = 1
+        if print_stats:
+          print(f"Training the model using set #{splitted_set}")
+
         X_train, X_test = fMRI_features[train_index], fMRI_features[test_index]
         y_train, y_test = labels[train_index], labels[test_index]
+        if print_stats:
+          print("Features and labels have been split into training and testing datasets!")
 
-        predictions = train_test_model(X_train, X_test, y_train, algorithm) # Train and test model using corresponding algorithm and get predictions 
+        predictions = train_test_model(X_train, X_test, y_train, algorithm) # Train and test model using corresponding algorithm and get predictions
+        if print_stats:
+          print("Model has been trained and tested!")
 
         accuracy, conf_matrix, sensitivity, specificity, precision, f1_score = calculate_metrics(y_test, predictions) # Calculate performance metrics
+        if print_stats:
+          print("Performance metrics for the model have been calculated!")
 
         total_accuracy += accuracy
         total_conf_matrix += conf_matrix
@@ -232,6 +264,8 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
         total_specificity += specificity
         total_precision += precision
         total_f1_score += f1_score
+
+        splitted_set += 1
 
     average_accuracy = total_accuracy / k
     average_sensitivity = total_sensitivity / k
