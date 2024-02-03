@@ -125,7 +125,7 @@ def features_and_labels(pipeline, derivative, strategy, print_stats=True):
 # TRAINING AND TESTING ML MODEL (various algorithms)
 
 # Function for hypertuning parameters for XGBoost classifier algorithm
-def xgb_classifier_hypertuned(X_train, y_train):
+def xgb_classifier_hypertuned(X_train, y_train, print_stats=True):
     parameter_grid = {
         'max depth': [3, 5, 7, 10],
         'learning rate': [0.01, 0.05, 0.1],
@@ -134,8 +134,12 @@ def xgb_classifier_hypertuned(X_train, y_train):
         'n_estimators': [50, 100, 200],
         'gamma': [0, 0.1, 0.2]
     }
+    if print_stats:
+      print("Hyperparameters for XGB model have been defined!")
 
     xgb_model = xgb.XGBClassifier(objective="binary:logistic", eval_metric="logloss") # Create XGBoost classifier
+    if print_stats:
+       print("Instance of XGBoost classifier created!")
 
     # Define a custom scoring function
     def custom_sensitivity_specificity_scoring(y_true, y_pred):
@@ -147,12 +151,24 @@ def xgb_classifier_hypertuned(X_train, y_train):
         return mean_sensitivity_specificity
 
     custom_scorer = make_scorer(custom_sensitivity_specificity_scoring) # Create the custom scorer
+    if print_stats:
+       print("Custom scoring metric created for hyperparameter testing!")
+
     grid_search = GridSearchCV(estimator=xgb_model, param_grid=parameter_grid, cv=3, scoring=custom_scorer) # Use GridSearchCV for hyperparameter tuning
+    if print_stats:
+       print("Hyperparameter tuning is complete!")
+
     grid_search.fit(X_train, y_train)
+    if print_stats:
+       print("Features have been fitted to hyperparameter tuning algorithm!")
 
     best_params = grid_search.best_params_ # Get the best hyperparameters
+    if print_stats:
+       print("Best hyperparameters have been found!")
 
     best_model = xgb.XGBClassifier(**best_params) # Train the model with the best hyperparameters
+    if print_stats:
+       print("XGBoost model has been trained!")
 
     return best_model
 
@@ -161,27 +177,30 @@ def train_test_model(X_train, X_test, y_train, algorithm, print_stats=True):
     if print_stats:
       print("Entered function for model fitting.")
     
-    match_algorithm = {
-        'SVM': SVC(),
-        'RF': RandomForestClassifier(n_estimators=100, random_state=42),
-        'LR': LogisticRegression(),
-        'DT': DecisionTreeClassifier(random_state=42),
-        'NB': GaussianNB(),
-        'KNN': KNeighborsClassifier(n_neighbors=5),
-        'XGB': xgb_classifier_hypertuned(X_train, y_train)
-            # NOTE: Processing time is too high, causing program to crash; MUST tune hyperparameters
-    } # This maps a string input to its corresponding class in scikit-learn
-    
-    if print_stats:
-      print("Dictionary created.")
-    
-    model = match_algorithm.get(algorithm) # Creating the actual model based on the algorithm parameter
-    if print_stats:
-      print(f"The model has been trained to the {algorithm} algorithm!")
+    if algorithm == 'XGB':
+      model = xgb_classifier_hypertuned(X_train, y_train)
+      if print_stats:
+        print("Model training complete!")
+    else:
+      if algorithm == 'SVM':
+         model = SVC()
+      elif algorithm == 'RF':
+         model = RandomForestClassifier(n_estimators=100, random_state=42)
+      elif algorithm == 'LR':
+         model = LogisticRegression()
+      elif algorithm == 'DT':
+         model = DecisionTreeClassifier(random_state=42)
+      elif algorithm == 'NB':
+         model = GaussianNB()
+      elif algorithm == 'KNN':
+         model = KNeighborsClassifier(n_neighbors=5)
+      
+      if print_stats:
+        print(f"An instance of the {algorithm} algorithm has been created!")
 
-    model.fit(X_train, y_train) # Training the model
-    if print_stats:
-      print("Model training complete!")
+      model.fit(X_train, y_train) # Training the model
+      if print_stats:
+        print("Model training complete!")
 
     y_predictions = model.predict(X_test) # Testing the model; getting predictions from the X_test values
     if print_stats:
@@ -239,11 +258,11 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
     total_specificity = 0
     total_precision = 0
     total_f1_score = 0
+    splitted_set = 1
 
     for train_index, test_index in kf.split(fMRI_features):
-        splitted_set = 1
         if print_stats:
-          print(f"Training the model using set #{splitted_set}")
+          print(f"kFold set #{splitted_set}")
 
         X_train, X_test = fMRI_features[train_index], fMRI_features[test_index]
         y_train, y_test = labels[train_index], labels[test_index]
@@ -264,7 +283,6 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
         total_specificity += specificity
         total_precision += precision
         total_f1_score += f1_score
-
         splitted_set += 1
 
     average_accuracy = total_accuracy / k
@@ -277,7 +295,7 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
 
     if print_stats:
         print("Average Accuracy: ", average_accuracy)
-        print("Overall Confusion Matrix: \n", total_conf_matrix)
+        print("Total Confusion Matrix: \n", total_conf_matrix)
         print("Average Sensitivity: ", average_sensitivity)
         print("Average Specificity: ", average_specificity)
         print("Average Precision: ", average_precision)
