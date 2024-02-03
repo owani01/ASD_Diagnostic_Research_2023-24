@@ -166,41 +166,39 @@ def xgb_classifier_hypertuned(X_train, y_train, print_stats=True):
     if print_stats:
        print("Best hyperparameters have been found!")
 
-    best_model = xgb.XGBClassifier(**best_params) # Train the model with the best hyperparameters
-    if print_stats:
-       print("XGBoost model has been trained!")
-
+    best_model = xgb.XGBClassifier(**best_params)
     return best_model
 
 # Function for training/testing ML model (for all algorithms)
-def train_test_model(X_train, X_test, y_train, algorithm, print_stats=True):
+def train_test_model(X_train, X_test, y_train, algorithm, print_stats=True, algorithm_hypertuned=False):
     if print_stats:
       print("Entered function for model fitting.")
     
-    if algorithm == 'XGB':
-      model = xgb_classifier_hypertuned(X_train, y_train)
-      if print_stats:
-        print("Model training complete!")
-    else:
-      if algorithm == 'SVM':
-         model = SVC()
-      elif algorithm == 'RF':
-         model = RandomForestClassifier(n_estimators=100, random_state=42)
-      elif algorithm == 'LR':
-         model = LogisticRegression()
-      elif algorithm == 'DT':
-         model = DecisionTreeClassifier(random_state=42)
-      elif algorithm == 'NB':
-         model = GaussianNB()
-      elif algorithm == 'KNN':
-         model = KNeighborsClassifier(n_neighbors=5)
+    if algorithm == 'SVM':
+        model = SVC()
+    elif algorithm == 'RF':
+        model = RandomForestClassifier(n_estimators=100, random_state=42)
+    elif algorithm == 'LR':
+        model = LogisticRegression()
+    elif algorithm == 'DT':
+        model = DecisionTreeClassifier(random_state=42)
+    elif algorithm == 'NB':
+        model = GaussianNB()
+    elif algorithm == 'KNN':
+        model = KNeighborsClassifier(n_neighbors=5)
+    elif algorithm == 'XGB':
+        if algorithm_hypertuned:
+          xgb_model = xgb_classifier_hypertuned(X_train, y_train, print_stats)
+          model = xgb.XGBClassifier(**xgb_model.get_params())
+        else:
+          model = xgb.XGBClassifier(objective="binary:logistic", eval_metric="logloss")
       
-      if print_stats:
-        print(f"An instance of the {algorithm} algorithm has been created!")
+    if print_stats:
+      print(f"An instance of the {algorithm} algorithm has been created!")
 
-      model.fit(X_train, y_train) # Training the model
-      if print_stats:
-        print("Model training complete!")
+    model.fit(X_train, y_train) # Training the model
+    if print_stats:
+      print("Model training complete!")
 
     y_predictions = model.predict(X_test) # Testing the model; getting predictions from the X_test values
     if print_stats:
@@ -221,12 +219,12 @@ def calculate_metrics(y_test, y_predictions):
     return accuracy, conf_matrix, sensitivity, specificity, precision, f1_score
 
 # Function for training/testing fMRI data with ML model without k-fold cross variation
-def train_test_fMRI_data_basic(fMRI_features, labels, algorithm, test_size=0.2, print_stats=True):
+def train_test_fMRI_data_basic(fMRI_features, labels, algorithm, test_size=0.2, print_stats=True, algorithm_hypertuned=False):
     X_train, X_test, y_train, y_test = train_test_split(fMRI_features, labels, test_size=test_size, random_state=42)
     if print_stats:
       print("Features and labels have been split into training and testing datasets!")
 
-    predictions = train_test_model(X_train, X_test, y_train, algorithm, print_stats=print_stats)
+    predictions = train_test_model(X_train, X_test, y_train, algorithm, print_stats=print_stats, algorithm_hypertuned=algorithm_hypertuned)
     if print_stats:
       print("The model has been trained and tested!")
 
@@ -246,7 +244,7 @@ def train_test_fMRI_data_basic(fMRI_features, labels, algorithm, test_size=0.2, 
     return [accuracy, conf_matrix, sensitivity, specificity, precision, f1_score, tp, tn, fp, fn]
 
 # Function for training/testing fMRI data with ML model using k-fold cross variation
-def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=True):
+def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=True, algorithm_hypertuned=False):
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
     if print_stats:
       print("Using kFold cross validation to random split data into sections is done!")
@@ -269,7 +267,7 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
         if print_stats:
           print("Features and labels have been split into training and testing datasets!")
 
-        predictions = train_test_model(X_train, X_test, y_train, algorithm) # Train and test model using corresponding algorithm and get predictions
+        predictions = train_test_model(X_train, X_test, y_train, algorithm, algorithm_hypertuned=algorithm_hypertuned) # Train and test model using corresponding algorithm and get predictions
         if print_stats:
           print("Model has been trained and tested!")
 
@@ -304,12 +302,12 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
     return [average_accuracy, average_sensitivity, average_specificity, average_precision, average_f1_score, total_tp, total_tn, total_fp, total_fn]
 
 
-def test_diagnostic_model(derivative, strategy, pipeline, algorithm, kFold=True, k=5, test_size=0.2, print_stats=True):
+def test_diagnostic_model(derivative, strategy, pipeline, algorithm, kFold=True, k=5, test_size=0.2, print_stats=True, algorithm_hypertuned=False):
     download_data(desired_derivative=derivative, desired_strategy=strategy, desired_pipeline=pipeline, print_stats=print_stats)
 
     features, labels = features_and_labels(derivative=derivative, pipeline=pipeline, strategy=strategy, print_stats=print_stats)
 
     if kFold:
-        return train_test_fMRI_data_kfold(fMRI_features=features, labels=labels, algorithm=algorithm, k=k, print_stats=print_stats)
+        return train_test_fMRI_data_kfold(fMRI_features=features, labels=labels, algorithm=algorithm, k=k, print_stats=print_stats, algorithm_hypertuned=algorithm_hypertuned)
     else:
-        return train_test_fMRI_data_basic(fMRI_features=features, labels=labels, algorithm=algorithm, test_size=test_size, print_stats=print_stats)
+        return train_test_fMRI_data_basic(fMRI_features=features, labels=labels, algorithm=algorithm, test_size=test_size, print_stats=print_stats, algorithm_hypertuned=algorithm_hypertuned)
