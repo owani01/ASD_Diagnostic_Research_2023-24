@@ -66,8 +66,8 @@ def main_test():
           except Exception as e:
               print(f"Error in execution of Model-{model_count}: {e}")
 
-          print("Model-{model_count}'s testing has been completed!")
           print()
+          print("Model-{model_count}'s testing has been completed!")
           model_count += 1
 
   return experiment_data
