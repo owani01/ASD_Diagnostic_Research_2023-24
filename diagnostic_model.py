@@ -1,4 +1,5 @@
 
+
 # Import the script function that downloads preprocessed fMRI data
 from download_abide_preprocessed_dataset import collect_and_download
 
@@ -187,11 +188,7 @@ def train_test_model(X_train, X_test, y_train, algorithm, print_stats=True, algo
     elif algorithm == 'KNN':
         model = KNeighborsClassifier(n_neighbors=5)
     elif algorithm == 'XGB':
-        if algorithm_hypertuned:
-          xgb_model = xgb_classifier_hypertuned(X_train, y_train, print_stats)
-          model = xgb.XGBClassifier(**xgb_model.get_params())
-        else:
-          model = xgb.XGBClassifier(objective="binary:logistic", eval_metric="logloss")
+        model = xgb.XGBClassifier(objective="binary:logistic", eval_metric="logloss")
       
     if print_stats:
       print(f"An instance of the {algorithm} algorithm has been created!")
@@ -267,7 +264,7 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
         if print_stats:
           print("Features and labels have been split into training and testing datasets!")
 
-        predictions = train_test_model(X_train, X_test, y_train, algorithm, algorithm_hypertuned=algorithm_hypertuned) # Train and test model using corresponding algorithm and get predictions
+        predictions = train_test_model(X_train, X_test, y_train, algorithm, algorithm_hypertuned=algorithm_hypertuned, print_stats=print_stats) # Train and test model using corresponding algorithm and get predictions
         if print_stats:
           print("Model has been trained and tested!")
 
@@ -311,3 +308,4 @@ def test_diagnostic_model(derivative, strategy, pipeline, algorithm, kFold=True,
         return train_test_fMRI_data_kfold(fMRI_features=features, labels=labels, algorithm=algorithm, k=k, print_stats=print_stats, algorithm_hypertuned=algorithm_hypertuned)
     else:
         return train_test_fMRI_data_basic(fMRI_features=features, labels=labels, algorithm=algorithm, test_size=test_size, print_stats=print_stats, algorithm_hypertuned=algorithm_hypertuned)
+
