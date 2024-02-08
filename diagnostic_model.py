@@ -5,6 +5,7 @@ from download_abide_preprocessed_dataset import collect_and_download
 
 import os
 import numpy as np
+import pandas as pd
 
 # Part of scikit-learn library; Support Vector Classification (SVC), a type of SVM used for classification tasks
 from sklearn.svm import SVC
@@ -80,14 +81,25 @@ def load_timeseries_data(file_path):
     return timeseries
 
 # Define a function for padding time series data
-def pad_timeseries_to_length(timeseries, target_length):
+def pad_timeseries_to_length(timeseries, target_length, filler='zero'):
     if len(timeseries) >= target_length:
         return timeseries[:target_length]
     else:
-        padding = np.zeros((target_length - len(timeseries), timeseries.shape[1]))
+        padding_length = target_length - len(timeseries)
+        if filler == 'zero':
+            padding = np.zeros((padding_length, timeseries.shape[1]))
+        elif filler == 'mean':
+            mean_value = np.mean(timeseries, axis=0)
+            padding = np.tile(mean_value, (padding_length, 1))
+        elif filler == 'median':
+            median_value = np.median(timeseries, axis=0)
+            padding = np.tile(median_value, (padding_length, 1))
+        else:
+            raise ValueError("Invalid filler type. Choose from 'zero', 'mean', or 'median'.")
+
         return np.vstack([timeseries, padding])
 
-def features_and_labels(pipeline, derivative, strategy, print_stats=True):
+def features_and_labels(pipeline, derivative, strategy, filler='zero', print_stats=True):
     # Specify the path to the directory containing the downloaded preprocessed data for ASD data
     download_asd_dir = f'abide_preprocessed_dataset/ASD/Outputs/{pipeline}/{strategy}/{derivative}'
     # Make features and labels arrays for ASD data
@@ -107,7 +119,7 @@ def features_and_labels(pipeline, derivative, strategy, print_stats=True):
 
     # Padding timeseries and # of features for features
     max_length = max(len(ts) for ts in all_features) # Find the maximum length among all timeseries
-    all_features_padded = [pad_timeseries_to_length(ts, max_length) for ts in all_features] # Pad each time series to the maximum length
+    all_features_padded = [pad_timeseries_to_length(ts, max_length, filler=filler) for ts in all_features] # Pad each time series to the maximum length
     all_features = np.array(all_features_padded) # Convert the list of padded arrays to a 2D NumPy array
     all_features = all_features.reshape((len(all_features), -1)) # Flatten each time series in all_features to make it a 2D array that is readable for scikit-learn's ML algorithms
 
@@ -123,7 +135,9 @@ def features_and_labels(pipeline, derivative, strategy, print_stats=True):
         print("Shape of all_features: ", all_features.shape)
         print("Shape of all_labels: ", all_labels.shape)
 
-    return all_features, all_labels
+    features_df, labels_df = pd.DataFrame(all_features), pd.DataFrame(all_labels)
+
+    return features_df, labels_df
 
 
 # TRAINING AND TESTING ML MODEL (various algorithms)
@@ -265,12 +279,12 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
     total_f1_score = 0
     splitted_set = 1
 
-    for train_index, test_index in kf.split(fMRI_features):
+    for train_index, test_index in kf.split(fMRI_features, labels):
         if print_stats:
           print(f"kFold set #{splitted_set}")
 
-        X_train, X_test = fMRI_features[train_index], fMRI_features[test_index]
-        y_train, y_test = labels[train_index], labels[test_index]
+        X_train, X_test = fMRI_features.iloc[train_index], fMRI_features.iloc[test_index]
+        y_train, y_test = labels.iloc[train_index], labels.iloc[test_index]
         if print_stats:
           print("Features and labels have been split into training and testing datasets!")
 
@@ -309,10 +323,10 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
     return [average_accuracy, average_sensitivity, average_specificity, average_precision, average_f1_score, total_tp, total_tn, total_fp, total_fn]
 
 
-def test_diagnostic_model(derivative, strategy, pipeline, algorithm, kFold=True, k=5, test_size=0.2, print_stats=True, algorithm_hypertuned=False):
+def test_diagnostic_model(derivative, strategy, pipeline, algorithm, kFold=True, k=5, test_size=0.2, print_stats=True, filler_value='zero', algorithm_hypertuned=False):
     download_data(desired_derivative=derivative, desired_strategy=strategy, desired_pipeline=pipeline, print_stats=print_stats)
 
-    features, labels = features_and_labels(derivative=derivative, pipeline=pipeline, strategy=strategy, print_stats=print_stats)
+    features, labels = features_and_labels(derivative=derivative, pipeline=pipeline, strategy=strategy, filler=filler_value, print_stats=print_stats)
 
     if kFold:
         return train_test_fMRI_data_kfold(fMRI_features=features, labels=labels, algorithm=algorithm, k=k, print_stats=print_stats, algorithm_hypertuned=algorithm_hypertuned)

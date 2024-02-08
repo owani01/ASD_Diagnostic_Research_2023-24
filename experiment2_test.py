@@ -34,9 +34,10 @@ def main_test():
   algorithms = ["DT", "KNN", "LR", "XGB"]
   pipelines = ["cpac", "niak"]
   strategies = ["filt_global", "filt_noglobal", "nofilt_global", "nofilt_noglobal"]
+  padding_methods = ["zero", "mean", "median"]
 
   model_count = 1
-  column_titles = ["Model #", "ML Algorithm", "Derivative", "Preprocessing Pipeline", "Preprocessing Strategy",
+  column_titles = ["Model #", "ML Algorithm", "Derivative", "Preprocessing Pipeline", "Preprocessing Strategy", "Padding Method",
                   "Sensitivity", "Specificity", "Precision", "F1 Score", "Accuracy",
                   "True Positives", "True Negatives", "False Positives", "False Negatives"]
   experiment_data = pd.DataFrame(columns=column_titles)
@@ -53,30 +54,31 @@ def main_test():
           print(f"Error in data downloading: {e}")
 
         for algorithm in algorithms:
-          try:
-            # Run the model; download data if needed, collect features and labels, train and test algorithm, collect performance metrics
-            model_performance = diagnostic_model.test_diagnostic_model(derivative=derivative, strategy=strategy, pipeline=pipeline, algorithm=algorithm, print_stats=False, kFold=True)
+          for pad in padding_methods:
+            try:
+              # Run the model; download data if needed, collect features and labels, train and test algorithm, collect performance metrics
+              model_performance = diagnostic_model.test_diagnostic_model(derivative=derivative, strategy=strategy, pipeline=pipeline, algorithm=algorithm, filler_value=pad, print_stats=False, kFold=True)
+              
+              model_data = [str(item) for item in [model_count, algorithm, derivative, pipeline, strategy, pad] + model_performance[1:5] + [model_performance[0]] + model_performance[5:]]
+              # print(model_data)
+
+              # Add the model's performance metrics to experiment data
+              experiment_data.loc[len(experiment_data)] = model_data
             
-            model_data = [str(item) for item in [model_count, algorithm, derivative, pipeline, strategy] + model_performance[1:5] + [model_performance[0]] + model_performance[5:]]
-            # print(model_data)
+            except Exception as e:
+                print()
+                print(f"Error in execution of Model-{model_count}: {e}")
 
-            # Add the model's performance metrics to experiment data
-            experiment_data.loc[len(experiment_data)] = model_data
-          
-          except Exception as e:
-              print()
-              print(f"Error in execution of Model-{model_count}: {e}")
-
-          print()
-          print(f"Model-{model_count}'s testing has been completed!")
-          # print(experiment_data.head())
-          print("-------------------------------------------------------------------------------------------------------------------------------")
-          model_count += 1
+            print()
+            print(f"Model-{model_count}'s testing has been completed!")
+            # print(experiment_data.head())
+            print("-------------------------------------------------------------------------------------------------------------------------------")
+            model_count += 1
       
       print("_______________________________________________________________________________________________________________________________")
 
   return experiment_data
 
 test_data = main_test()
-print(test_data.head())
+
 test_data.to_excel(title="Experiment-2 Test Data Table.xlsx", index=False)
