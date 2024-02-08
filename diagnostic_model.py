@@ -39,6 +39,9 @@ from sklearn.metrics import accuracy_score, confusion_matrix, make_scorer
 # Functionalities from scikit-learn for performing k-fold cross validation of data
 from sklearn.model_selection import KFold, cross_val_predict
 
+# Functionalities from scikit-learn for scaling
+from sklearn.preprocessing import RobustScaler
+
 def download_data(desired_derivative, desired_strategy, desired_pipeline, print_stats=True):
     # Variables to specify download settings (modify these values as needed)
     download_asd_dir = 'abide_preprocessed_dataset/ASD'  # Path to local folder to download files to for ASD data
@@ -180,7 +183,7 @@ def train_test_model(X_train, X_test, y_train, algorithm, print_stats=True, algo
     elif algorithm == 'RF':
         model = RandomForestClassifier(n_estimators=100, random_state=42)
     elif algorithm == 'LR':
-        model = LogisticRegression()
+        model = LogisticRegression(max_iter=1000)
     elif algorithm == 'DT':
         model = DecisionTreeClassifier(random_state=42)
     elif algorithm == 'NB':
@@ -220,6 +223,13 @@ def train_test_fMRI_data_basic(fMRI_features, labels, algorithm, test_size=0.2, 
     X_train, X_test, y_train, y_test = train_test_split(fMRI_features, labels, test_size=test_size, random_state=42)
     if print_stats:
       print("Features and labels have been split into training and testing datasets!")
+
+    # Use RobustScaler to normalize the data
+    scaler = RobustScaler()
+    scaler.fit(X_train) # Fit the scaler to the data
+    X_train_scaled = scaler.transform(X_train) # Transform the training data
+    X_test_scaled = scaler.transform(X_test) # Transform the test/validation data using the same scaler
+    X_train, X_test = X_train_scaled, X_test_scaled
 
     predictions = train_test_model(X_train, X_test, y_train, algorithm, print_stats=print_stats, algorithm_hypertuned=algorithm_hypertuned)
     if print_stats:
