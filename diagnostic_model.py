@@ -1,5 +1,3 @@
-
-
 # Import the script function that downloads preprocessed fMRI data
 from download_abide_preprocessed_dataset import collect_and_download
 
@@ -42,6 +40,9 @@ from sklearn.model_selection import KFold, cross_val_predict
 
 # Functionalities from scikit-learn for scaling
 from sklearn.preprocessing import RobustScaler
+
+# Oversampling methods from imbalanced-learn
+from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN, BorderlineSMOTE, SVMSMOTE
 
 def download_data(desired_derivative, desired_strategy, desired_pipeline, print_stats=True):
     # Variables to specify download settings (modify these values as needed)
@@ -99,7 +100,7 @@ def pad_timeseries_to_length(timeseries, target_length, filler='zero'):
 
         return np.vstack([timeseries, padding])
 
-def features_and_labels(pipeline, derivative, strategy, filler='zero', print_stats=True):
+def features_and_labels(pipeline, derivative, strategy, filler='zero', print_stats=True, oversampler='None'):
     # Specify the path to the directory containing the downloaded preprocessed data for ASD data
     download_asd_dir = f'abide_preprocessed_dataset/ASD/Outputs/{pipeline}/{strategy}/{derivative}'
     # Make features and labels arrays for ASD data
@@ -128,6 +129,30 @@ def features_and_labels(pipeline, derivative, strategy, filler='zero', print_sta
     all_labels[:len(labels_asd)] = labels_asd # Assign the ASD labels to the first part of the array
     all_labels[len(labels_asd):] = labels_tdc # Assign the TDC labels to the remaining part of the array
     all_labels = np.array(all_labels)
+
+    # Create samplers based on the type of oversampler
+    if oversampler == 'Random':
+        sampler = RandomOverSampler(random_state=42)
+    elif oversampler == 'SMOTE':
+        sampler = SMOTE(random_state=42)
+    elif oversampler == 'ADASYN':
+        sampler = ADASYN(sampling_strategy='auto', random_state=42)
+    elif oversampler == 'BorderlineSMOTE':
+        sampler = BorderlineSMOTE(random_state=42)
+    elif oversampler == 'SVMSMOTE':
+        sampler = SVMSMOTE(random_state=42)
+    else:
+        sampler = None
+
+    # Make more samples for the minority class
+    if sampler is not None:
+        try:
+            all_features_resampled, all_labels_resampled = sampler.fit_resample(all_features, all_labels)
+        except ValueError as e:
+            print("No additional cases were created by the oversampler.") if print_stats else None
+            all_features_resampled, all_labels_resampled = all_features, all_labels
+        
+        all_features, all_labels = all_features_resampled, all_labels_resampled
 
     if print_stats:
         print("Number of rows in all_features:", len(all_features))
@@ -197,7 +222,7 @@ def train_test_model(X_train, X_test, y_train, algorithm, print_stats=True, algo
     elif algorithm == 'RF':
         model = RandomForestClassifier(n_estimators=100, random_state=42)
     elif algorithm == 'LR':
-        model = LogisticRegression(max_iter=1000)
+        model = LogisticRegression(max_iter=5000)
     elif algorithm == 'DT':
         model = DecisionTreeClassifier(random_state=42)
     elif algorithm == 'NB':
@@ -323,10 +348,10 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
     return [average_accuracy, average_sensitivity, average_specificity, average_precision, average_f1_score, total_tp, total_tn, total_fp, total_fn]
 
 
-def test_diagnostic_model(derivative, strategy, pipeline, algorithm, kFold=True, k=5, test_size=0.2, print_stats=True, filler_value='zero', algorithm_hypertuned=False):
+def test_diagnostic_model(derivative, strategy, pipeline, algorithm, kFold=True, k=5, test_size=0.2, print_stats=True, filler_value='zero', algorithm_hypertuned=False, oversampler='None'):
     download_data(desired_derivative=derivative, desired_strategy=strategy, desired_pipeline=pipeline, print_stats=print_stats)
 
-    features, labels = features_and_labels(derivative=derivative, pipeline=pipeline, strategy=strategy, filler=filler_value, print_stats=print_stats)
+    features, labels = features_and_labels(derivative=derivative, pipeline=pipeline, strategy=strategy, filler=filler_value, print_stats=print_stats, oversampler=oversampler)
 
     if kFold:
         return train_test_fMRI_data_kfold(fMRI_features=features, labels=labels, algorithm=algorithm, k=k, print_stats=print_stats, algorithm_hypertuned=algorithm_hypertuned)
