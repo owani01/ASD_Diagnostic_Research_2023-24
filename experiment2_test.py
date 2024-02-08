@@ -1,4 +1,3 @@
-
 import pandas as pd
 import diagnostic_model
 
@@ -55,20 +54,26 @@ def main_test():
 
         for algorithm in algorithms:
           try:
-              # Run the model; download data if needed, collect features and labels, train and test algorithm, collect performance metrics
-              model_performance = diagnostic_model.test_diagnostic_model(derivative=derivative, strategy=strategy, pipeline=pipeline, algorithm=algorithm, print_stats=False, kFold=True)
-              
-              model_data = [model_count, algorithm, derivative, pipeline, strategy] + model_performance[1:4] + model_performance[0] + model_performance[5:8]
-              
-              # Add the model's performance metrics to experiment data
-              experiment_data = experiment_data.append(pd.Series(model_data, index=column_titles), ignore_index=True)
+            # Run the model; download data if needed, collect features and labels, train and test algorithm, collect performance metrics
+            model_performance = diagnostic_model.test_diagnostic_model(derivative=derivative, strategy=strategy, pipeline=pipeline, algorithm=algorithm, print_stats=False, kFold=True)
+            
+            model_data = [str(item) for item in [model_count, algorithm, derivative, pipeline, strategy] + model_performance[1:5] + [model_performance[0]] + model_performance[5:]]
+            # print(model_data)
+
+            # Add the model's performance metrics to experiment data
+            experiment_data.loc[len(experiment_data)] = model_data
           
           except Exception as e:
+              print()
               print(f"Error in execution of Model-{model_count}: {e}")
 
           print()
-          print("Model-{model_count}'s testing has been completed!")
+          print(f"Model-{model_count}'s testing has been completed!")
+          # print(experiment_data.head())
+          print("-------------------------------------------------------------------------------------------------------------------------------")
           model_count += 1
+      
+      print("_______________________________________________________________________________________________________________________________")
 
   return experiment_data
 
