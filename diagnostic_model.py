@@ -348,7 +348,7 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
     return [average_accuracy, average_sensitivity, average_specificity, average_precision, average_f1_score, total_tp, total_tn, total_fp, total_fn]
 
 
-def test_diagnostic_model(derivative, strategy, pipeline, algorithm, kFold=True, k=5, test_size=0.2, print_stats=True, filler_value='zero', algorithm_hypertuned=False, oversampler='None'):
+def test_diagnostic_model(derivative, strategy, pipeline, algorithm, kFold=True, k=5, test_size=0.2, print_stats=True, filler_value='zero', algorithm_hypertuned=False, oversampler=None):
     download_data(desired_derivative=derivative, desired_strategy=strategy, desired_pipeline=pipeline, print_stats=print_stats)
 
     features, labels = features_and_labels(derivative=derivative, pipeline=pipeline, strategy=strategy, filler=filler_value, print_stats=print_stats, oversampler=oversampler)
