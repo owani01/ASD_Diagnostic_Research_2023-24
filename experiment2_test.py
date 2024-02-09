@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import diagnostic_model
 
 def LR_trial1():
@@ -53,15 +54,19 @@ def main_test():
           print(f"Downloaded data for parameters -> derivative: {derivative}, pipeline: {pipeline}, strategy: {strategy}")
         except Exception as e:
           print(f"Error in data downloading: {e}")
+        
+        for oversampler in oversamplers:
+          for padder in padding_methods:
+            features, labels = diagnostic_model.features_and_labels(derivative=derivative, pipeline=pipeline, strategy=strategy, filler=padder, print_stats=False, oversampler=oversampler)
+            print()
+            print(f"Extracted features and labels -> filler value: {padding_methods}, oversampler: {oversampler}")
 
-        for algorithm in algorithms:
-          for oversampler in oversamplers:
-            for pad in padding_methods:
+            for algorithm in algorithms:
               try:
                 # Run the model; download data if needed, collect features and labels, train and test algorithm, collect performance metrics
-                model_performance = diagnostic_model.test_diagnostic_model(derivative=derivative, strategy=strategy, pipeline=pipeline, algorithm=algorithm, filler_value=pad, oversampler=oversampler, print_stats=False, kFold=True)
-                
-                model_data = [str(item) for item in [model_count, algorithm, derivative, pipeline, strategy, oversampler, pad] + model_performance[1:5] + [model_performance[0]] + model_performance[5:]]
+                model_performance = diagnostic_model.train_test_fMRI_data_kfold(fMRI_features=features, labels=np.ravel(labels), algorithm=algorithm, k=5, print_stats=False, algorithm_hypertuned=False)
+
+                model_data = [str(item) for item in [model_count, algorithm, derivative, pipeline, strategy, oversampler, padder] + model_performance[1:5] + [model_performance[0]] + model_performance[5:]]
                 # print(model_data)
 
                 # Add the model's performance metrics to experiment data

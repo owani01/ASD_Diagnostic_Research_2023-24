@@ -309,7 +309,7 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
           print(f"kFold set #{splitted_set}")
 
         X_train, X_test = fMRI_features.iloc[train_index], fMRI_features.iloc[test_index]
-        y_train, y_test = labels.iloc[train_index], labels.iloc[test_index]
+        y_train, y_test = labels[train_index], labels[test_index]
         if print_stats:
           print("Features and labels have been split into training and testing datasets!")
 
