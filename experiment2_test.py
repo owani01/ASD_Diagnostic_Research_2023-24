@@ -60,7 +60,7 @@ def process_combination(derivative, pipeline, strategy, algorithms, oversampler,
     except Exception as e:
         print(f"Error in processing combination: {e}")
 
-def main_test():
+def main_test_multiprocessing():
     derivatives = ["rois_aal", "rois_cc200", "rois_cc400", "rois_dosenbach160", "rois_ez", "rois_ho", "rois_tt"]
     algorithms = ["LR", "XGB"]
     pipelines = ["cpac", "niak"]
@@ -89,6 +89,60 @@ def main_test():
 
     return experiment_data
 
-test_data = main_test()
+def main_test_singleprocessing():
+    derivatives = ["rois_aal", "rois_cc200", "rois_cc400", "rois_dosenbach160", "rois_ez", "rois_ho", "rois_tt"]
+    algorithms = ["LR", "XGB"]
+    pipelines = ["cpac", "niak"]
+    strategies = ["filt_global", "filt_noglobal", "nofilt_global", "nofilt_noglobal"]
+    oversamplers = [None, "Random", "SMOTE", "ADASYN", "BorderlineSMOTE", "SVMSMOTE"]
+    padding_methods = ["zero", "mean", "median"]
+    model_count = 1
+    column_titles = ["Model #", "ML Algorithm", "Derivative", "Preprocessing Pipeline", "Preprocessing Strategy", "Oversampler", "Padding Method",
+                  "Sensitivity", "Specificity", "Precision", "F1 Score", "Accuracy",
+                  "True Positives", "True Negatives", "False Positives", "False Negatives"]
+    experiment_data = pd.DataFrame(columns=column_titles)
+    for derivative in derivatives:
+        for pipeline in pipelines:
+            for strategy in strategies:
+                try:
+                # Download data
+                    diagnostic_model.download_data(desired_derivative=derivative, desired_strategy=strategy, desired_pipeline=pipeline, print_stats=False)
+                    print()
+                    print(f"Downloaded data for parameters -> derivative: {derivative}, pipeline: {pipeline}, strategy: {strategy}")
+                except Exception as e:
+                    print(f"Error in data downloading: {e}")
+
+                for oversampler in oversamplers:
+                    for padder in padding_methods:
+                        features, labels = diagnostic_model.features_and_labels(derivative=derivative, pipeline=pipeline, strategy=strategy, filler=padder, print_stats=False, oversampler=oversampler)
+                        print()
+                        print(f"Extracted features and labels -> filler value: {padding_methods}, oversampler: {oversampler}")
+
+                        for algorithm in algorithms:
+                            try:
+                                model_performance = diagnostic_model.train_test_fMRI_data_kfold(fMRI_features=features, labels=np.ravel(labels), algorithm=algorithm, k=5, print_stats=False, algorithm_hypertuned=False)
+
+                                model_data = [str(item) for item in [model_count, algorithm, derivative, pipeline, strategy, oversampler, padder] + model_performance[1:5] + [model_performance[0]] + model_performance[5:]]
+                                # print(model_data)
+
+                                # Add the model's performance metrics to experiment data
+                                experiment_data.loc[len(experiment_data)] = model_data
+              
+                            except Exception as e:
+                                print()
+                                print(f"Error in execution of Model-{model_count}: {e}")
+                            
+                            print()
+                            print(f"Model-{model_count}'s testing has been completed!")
+                            # print(experiment_data.head())
+                            print("-------------------------------------------------------------------------------------------------------------------------------")
+                            model_count += 1
+      
+            print("_______________________________________________________________________________________________________________________________")
+    
+    return experiment_data
+
+
+test_data = main_test_singleprocessing()
 
 test_data.to_excel(title="Experiment-2 Test Data Table.xlsx", index=False)

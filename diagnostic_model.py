@@ -230,7 +230,7 @@ def train_test_model(X_train, X_test, y_train, algorithm, print_stats=True, algo
     elif algorithm == 'KNN':
         model = KNeighborsClassifier(n_neighbors=5)
     elif algorithm == 'XGB':
-        model = xgb.XGBClassifier(objective="binary:logistic", eval_metric="logloss", tree_method="gpu_hist")
+        model = xgb.XGBClassifier(objective="binary:logistic", eval_metric="logloss", tree_method="hist", device="cpu")
       
     if print_stats:
       print(f"An instance of the {algorithm} algorithm has been created!")
