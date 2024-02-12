@@ -116,7 +116,7 @@ def main_test_singleprocessing():
                     for padder in padding_methods:
                         features, labels = diagnostic_model.features_and_labels(derivative=derivative, pipeline=pipeline, strategy=strategy, filler=padder, print_stats=False, oversampler=oversampler)
                         print()
-                        print(f"Extracted features and labels -> filler value: {padding_methods}, oversampler: {oversampler}")
+                        print(f"Extracted features and labels -> filler value: {padder}, oversampler: {oversampler}")
 
                         for algorithm in algorithms:
                             try:
