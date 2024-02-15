@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import diagnostic_model
 import multiprocessing
+from queue import Queue
 
 def LR_trial1():
   # Test run --> Logistic Regression algorithm w/out kFold
@@ -31,7 +32,8 @@ def XGB_trial2():
   except Exception as e:
     print(f"Error in model execution: {e}")
 
-def process_combination(derivative, pipeline, strategy, algorithms, oversampler, padder, model_count, experiment_data):
+# Modify process_combination to use Queue
+def process_combination(derivative, pipeline, strategy, algorithms, oversampler, padder, model_count, queue):
     try:
         # Download data
         diagnostic_model.download_data(desired_derivative=derivative, desired_strategy=strategy, desired_pipeline=pipeline, print_stats=False)
@@ -51,8 +53,8 @@ def process_combination(derivative, pipeline, strategy, algorithms, oversampler,
                 model_performance = diagnostic_model.train_test_fMRI_data_kfold(fMRI_features=features, labels=np.ravel(labels), algorithm=algorithm, k=5, print_stats=False, algorithm_hypertuned=False)
 
                 model_data = [str(item) for item in [model_count, algorithm, derivative, pipeline, strategy, oversampler, padder] + model_performance[1:5] + [model_performance[0]] + model_performance[5:]]
-                # Add the model's performance metrics to experiment data
-                experiment_data.loc[len(experiment_data)] = model_data
+                # Put the model's performance metrics into the queue
+                queue.put(model_data)
             except Exception as e:
                 print(f"Error in execution of Model-{model_count}: {e}")
             print(f"Model-{model_count}'s testing has been completed!")
@@ -74,18 +76,23 @@ def main_test_multiprocessing():
     experiment_data = pd.DataFrame(columns=column_titles)
     model_count = 1
 
+    # Create a Queue to store the results
+    queue = Queue()
+
     jobs = []
     for derivative in derivatives:
         for pipeline in pipelines:
             for strategy in strategies:
                 for oversampler in oversamplers:
                     for padder in padding_methods:
-                        p = multiprocessing.Process(target=process_combination, args=(derivative, pipeline, strategy, algorithms, oversampler, padder, model_count, experiment_data))
+                        p = multiprocessing.Process(target=process_combination, args=(derivative, pipeline, strategy, algorithms, oversampler, padder, model_count, queue))
                         jobs.append(p)
                         p.start()
 
-    for job in jobs:
-        job.join()
+    # Retrieve results from the Queue and put them into the DataFrame
+    while len(experiment_data) < len(derivatives) * len(pipelines) * len(strategies) * len(oversamplers) * len(padding_methods) * len(algorithms):
+        model_data = queue.get()
+        experiment_data.loc[len(experiment_data)] = model_data
 
     return experiment_data
 
@@ -143,6 +150,6 @@ def main_test_singleprocessing():
     return experiment_data
 
 
-test_data = main_test_singleprocessing()
+test_data = main_test_multiprocessing()
 
 test_data.to_excel(title="Experiment-2 Test Data Table.xlsx", index=False)
