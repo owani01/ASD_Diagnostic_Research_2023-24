@@ -3,6 +3,7 @@ import numpy as np
 import diagnostic_model
 import multiprocessing
 from queue import Queue
+import logging
 
 def LR_trial1():
   # Test run --> Logistic Regression algorithm w/out kFold
@@ -32,20 +33,22 @@ def XGB_trial2():
   except Exception as e:
     print(f"Error in model execution: {e}")
 
+# Configure logging
+logging.basicConfig(filename="experiment.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 # Modify process_combination to use Queue
 def process_combination(derivative, pipeline, strategy, algorithms, oversampler, padder, model_count, queue):
     try:
         # Download data
         diagnostic_model.download_data(desired_derivative=derivative, desired_strategy=strategy, desired_pipeline=pipeline, print_stats=False)
-        print(f"Downloaded data for parameters -> derivative: {derivative}, pipeline: {pipeline}, strategy: {strategy}")
+        logging.info(f"Downloaded data for parameters -> derivative: {derivative}, pipeline: {pipeline}, strategy: {strategy}")
     except Exception as e:
-        print(f"Error in data downloading: {e}")
+        logging.error(f"Error in data downloading: {e}")
     
     try:
         # Extract features and labels
         features, labels = diagnostic_model.features_and_labels(derivative=derivative, pipeline=pipeline, strategy=strategy, filler=padder, print_stats=False, oversampler=oversampler)
-        print()
-        print(f"Extracted features and labels -> filler value: {padder}, oversampler: {oversampler}")
+        logging.info(f"Extracted features and labels -> filler value: {padder}, oversampler: {oversampler}")
 
         for algorithm in algorithms:
             try:
@@ -56,13 +59,16 @@ def process_combination(derivative, pipeline, strategy, algorithms, oversampler,
                 # Put the model's performance metrics into the queue
                 queue.put(model_data)
             except Exception as e:
-                print(f"Error in execution of Model-{model_count}: {e}")
-            print(f"Model-{model_count}'s testing has been completed!")
+                logging.error(f"Error in execution of Model-{model_count}: {e}")
+            logging.info(f"Model-{model_count}'s testing has been completed!")
             model_count += 1
     except Exception as e:
-        print(f"Error in processing combination: {e}")
+        logging.error(f"Error in processing combination: {e}")
 
 def main_test_multiprocessing():
+    # Configure logging
+    logging.basicConfig(filename='experiment.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
     derivatives = ["rois_aal", "rois_cc200", "rois_cc400", "rois_dosenbach160", "rois_ez", "rois_ho", "rois_tt"]
     algorithms = ["LR", "XGB"]
     pipelines = ["cpac", "niak"]
