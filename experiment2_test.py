@@ -42,13 +42,16 @@ def process_combination(derivative, pipeline, strategy, algorithms, oversampler,
         # Download data
         diagnostic_model.download_data(desired_derivative=derivative, desired_strategy=strategy, desired_pipeline=pipeline, print_stats=False)
         logging.info(f"Downloaded data for parameters -> derivative: {derivative}, pipeline: {pipeline}, strategy: {strategy}")
+        print(f"Downloaded data for parameters -> derivative: {derivative}, pipeline: {pipeline}, strategy: {strategy}")
     except Exception as e:
         logging.error(f"Error in data downloading: {e}")
+        print(f"Error in data downloading: {e}")
     
     try:
         # Extract features and labels
         features, labels = diagnostic_model.features_and_labels(derivative=derivative, pipeline=pipeline, strategy=strategy, filler=padder, print_stats=False, oversampler=oversampler)
         logging.info(f"Extracted features and labels -> filler value: {padder}, oversampler: {oversampler}")
+        print(f"Extracted features and labels -> filler value: {padder}, oversampler: {oversampler}")
 
         for algorithm in algorithms:
             try:
@@ -60,10 +63,13 @@ def process_combination(derivative, pipeline, strategy, algorithms, oversampler,
                 queue.put(model_data)
             except Exception as e:
                 logging.error(f"Error in execution of Model-{model_count}: {e}")
+                print(f"Error in execution of Model-{model_count}: {e}")
             logging.info(f"Model-{model_count}'s testing has been completed!")
+            print(f"Model-{model_count}'s testing has been completed!")
             model_count += 1
     except Exception as e:
         logging.error(f"Error in processing combination: {e}")
+        print(f"Error in processing combination: {e}")
 
 def main_test_multiprocessing():
     # Configure logging
