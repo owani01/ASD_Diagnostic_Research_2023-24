@@ -313,6 +313,15 @@ def train_test_fMRI_data_kfold(fMRI_features, labels, algorithm, k, print_stats=
         if print_stats:
           print("Features and labels have been split into training and testing datasets!")
 
+        # Use RobustScaler to normalize the data
+        scaler = RobustScaler()
+        scaler.fit(X_train) # Fit the scaler to the data
+        X_train_scaled = scaler.transform(X_train) # Transform the training data
+        X_test_scaled = scaler.transform(X_test) # Transform the test/validation data using the same scaler
+        X_train, X_test = X_train_scaled, X_test_scaled
+        if print_stats:
+           print("X_train and X_test have been scaled using RobustScaler!")
+
         predictions = train_test_model(X_train, X_test, y_train, algorithm, algorithm_hypertuned=algorithm_hypertuned, print_stats=print_stats) # Train and test model using corresponding algorithm and get predictions
         if print_stats:
           print("Model has been trained and tested!")
