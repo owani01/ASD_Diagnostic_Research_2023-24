@@ -108,6 +108,61 @@ def main_test_multiprocessing():
 
     return experiment_data
 
+derivatives = ["rois_aal", "rois_cc200", "rois_cc400", "rois_dosenbach160", "rois_ez", "rois_ho", "rois_tt"]
+strategies = ["filt_global", "filt_noglobal", "nofilt_global", "nofilt_noglobal"]
+oversamplers = [None, "SMOTE", "ADASYN", "BorderlineSMOTE", "SVMSMOTE"]
+padding_methods = ["zero", "mean", "median"]
+
+def test(algorithm):
+    column_titles = ["Model #", "ML Algorithm", "Derivative", "Preprocessing Pipeline", "Preprocessing Strategy", "Oversampler", "Padding Method",
+                    "Sensitivity", "Specificity", "Precision", "F1 Score", "Accuracy",
+                    "True Positives", "True Negatives", "False Positives", "False Negatives"]
+    experiment_data = pd.DataFrame(columns=column_titles)
+
+    for derivative in derivatives:
+        for strategy in strategies:
+            try:
+            # Download data
+                diagnostic_model.download_data(desired_derivative=derivative, desired_strategy=strategy, desired_pipeline="niak", print_stats=False)
+                print()
+                print(f"Downloaded data for parameters -> derivative: {derivative}, pipeline: niak, strategy: {strategy}")
+            except Exception as e:
+                print(f"Error in data downloading: {e}")
+
+            for oversampler in oversamplers:
+                for padder in padding_methods:
+                    features, labels = diagnostic_model.features_and_labels(derivative=derivative, pipeline="niak", strategy=strategy, filler=padder, print_stats=False, oversampler=oversampler)
+                    print()
+                    print(f"Extracted features and labels -> filler value: {padder}, oversampler: {oversampler}")
+
+                    try:
+                        model_performance = diagnostic_model.train_test_fMRI_data_kfold(fMRI_features=features, labels=np.ravel(labels), algorithm=algorithm, k=5, print_stats=False, algorithm_hypertuned=False)
+
+                        model_data = [str(item) for item in [model_count, algorithm, derivative, "niak", strategy, oversampler, padder] + model_performance[1:5] + [model_performance[0]] + model_performance[5:]]
+                        # print(model_data)
+
+                        # Add the model's performance metrics to experiment data
+                        experiment_data.loc[len(experiment_data)] = model_data
+        
+                    except Exception as e:
+                        print()
+                        print(f"Error in execution of Model-{model_count}: {e}")
+                    
+                    print()
+                    print(f"Model-{model_count}'s testing has been completed!")
+                    # print(experiment_data.head())
+                    print("-------------------------------------------------------------------------------------------------------------------------------")
+                    model_count += 1
+
+        print("_______________________________________________________________________________________________________________________________")
+    
+    return experiment_data
+
+LR_data = test("LR") #test all LR models
+LR_data.to_excel(title="Experiment-2 Test Data Table (LR).xlsx", index=False)
+XGB_data = test("XGB") #test all XGBoost models
+XGB_data.to_excel(title="Experiment-2 Test Data Table (XGB).xlsx", index=False)
+
 def main_test_singleprocessing():
     derivatives = ["rois_aal", "rois_cc200", "rois_cc400", "rois_dosenbach160", "rois_ez", "rois_ho", "rois_tt"]
     algorithms = ["LR", "XGB"]
@@ -160,8 +215,3 @@ def main_test_singleprocessing():
             print("_______________________________________________________________________________________________________________________________")
     
     return experiment_data
-
-
-test_data = main_test_multiprocessing()
-
-test_data.to_excel(title="Experiment-2 Test Data Table.xlsx", index=False)
