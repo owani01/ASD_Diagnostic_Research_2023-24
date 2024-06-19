@@ -1,10 +1,34 @@
 import pandas as pd
 import numpy as np
 import diagnostic_model
-import multiprocessing
-from queue import Queue
-import logging
 
+
+def experiment2_test():
+    column_titles = ["Model #", "ML Algorithm", "Sensitivity", "Specificity", "Precision", "F1 Score", "Accuracy", "True Positives", "True Negatives", "False Positives", "False Negatives"]
+    experiment_data = pd.DataFrame(columns=column_titles)
+    model_count = 1
+    
+    algorithms = ["SVM", "RF", "DT", "KNN", "LR", "NB", "XGB"]
+    
+    for algorithm in algorithms:
+        try: 
+            model_stats = diagnostic_model.test_diagnostic_model(derivative="rois_cc200", strategy="filt_noglobal", pipeline="cpac", algorithm=algorithm, oversampler="SMOTE", filler_value="zero", print_stats=False, kFold=True)
+            
+            model_data = [str(item) for item in [model_count, algorithm] + model_performance[1:5] + [model_performance[0]] + model_performance[5:]]
+
+            experiment_data.loc[len(experiment_data)] = model_data
+        except Exception as e:
+            print(f"Error in model execution: {e}")
+        
+        print(f"Model-{model_count}'s testing has been completed!")
+        print()
+        model_count += 1
+
+    experiment_data.to_excel(title="Experiment-2 Test Data Table.xlsx", index=False)
+
+experiment2_test()
+
+"""
 def LR_trial1():
   # Test run --> Logistic Regression algorithm w/out kFold
   try:
@@ -158,11 +182,6 @@ def test(algorithm):
     
     return experiment_data
 
-LR_data = test("LR") #test all LR models
-LR_data.to_excel(title="Experiment-2 Test Data Table (LR).xlsx", index=False)
-XGB_data = test("XGB") #test all XGBoost models
-XGB_data.to_excel(title="Experiment-2 Test Data Table (XGB).xlsx", index=False)
-
 def main_test_singleprocessing():
     derivatives = ["rois_aal", "rois_cc200", "rois_cc400", "rois_dosenbach160", "rois_ez", "rois_ho", "rois_tt"]
     algorithms = ["LR", "XGB"]
@@ -215,3 +234,4 @@ def main_test_singleprocessing():
             print("_______________________________________________________________________________________________________________________________")
     
     return experiment_data
+"""
